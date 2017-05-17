@@ -2,13 +2,42 @@ import './style';
 
 console.log('here', DEVICE);
 
-let ws = new WebSocket(DEVICE.ws, 'webClient');
+let ws;
+let wasopen;
+let reconnect;
 
-ws.onopen = (event) => {
-    console.log('is opened');
-    ws.send('HI MOM');
-};
+function connect() {
 
-ws.onmessage = (msg) => {
-    console.log('recd', msg.data);
-};
+    try {
+
+        ws = new WebSocket(DEVICE.ws, 'webClient');
+
+        ws.onopen = () => {
+            clearInterval(reconnect);
+            let msg = JSON.stringify({topic: 'get.everything'});
+            ws.send(msg);
+            wasopen = true;
+        };
+
+        ws.onerror = () => {};
+
+        ws.onclose = () => {
+            console.log('is closed');
+            if (wasopen) {
+                wasopen = false;
+                reconnect = setInterval(connect, 1000);
+                setTimeout(() => {
+                    clearInterval(reconnect);
+                }, 30000);
+            }
+        };
+
+        ws.onmessage = (msg) => {
+            console.log('recd', msg.data);
+        };
+
+    } catch(e) {}
+
+}
+
+connect();
